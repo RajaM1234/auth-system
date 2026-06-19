@@ -1,4 +1,6 @@
+const bcrypt = require("bcrypt");
 const User = require("../models/user");
+
 async function registerUser(req, res) {
   const { name, email, password } = req.body;
 
@@ -11,10 +13,11 @@ async function registerUser(req, res) {
   if (existingUser) {
     return res.status(409).send("Email already exists");
   }
+  const hashedPassword = await bcrypt.hash(password, 10);
   await User.create({
     name,
     email,
-    password,
+    password: hashedPassword,
   });
 
   console.log("User saved successfully");
@@ -29,15 +32,20 @@ async function loginUser(req, res) {
     return res.status(400).send("Email and Password are required");
   }
 
-  const user = await User.findOne({ email, password });
+  const user = await User.findOne({ email });
 
   if (!user) {
     return res.status(401).send("Invalid credentials");
   }
 
+  const isMatch = await bcrypt.compare(password, user.password);
+
+  if (!isMatch) {
+    return res.status(401).send("Invalid credentials");
+  }
+
   res.send("Login successful");
 }
-
 module.exports = {
   registerUser,
   loginUser,
